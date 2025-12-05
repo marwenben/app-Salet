@@ -1978,3 +1978,467 @@ setInterval(() => {
     });
     saveNotificationSettings();
 }, 3600000); // Toutes les heures
+
+// ========== SYSTÈME DE NOTIFICATIONS FINAL - Version Fonctionnelle ==========
+// À AJOUTER À LA TOUTE FIN DE script.js (après tout le code existant)
+// Ne pas toucher au code existant, juste ajouter ceci à la fin
+
+console.log('🔔 ========== SYSTÈME NOTIFICATIONS FINAL ==========');
+
+// ========== VARIABLES GLOBALES ==========
+let notifPermission = 'default';
+let notifTimers = [];
+let adhanPlayer = null;
+let prayerConfig = {
+    fajr: false,
+    dhuhr: false,
+    asr: false,
+    maghrib: false,
+    isha: false
+};
+
+// ========== INITIALISER L'AUDIO ==========
+function initAdhan() {
+    console.log('🔊 Init audio adhan...');
+    try {
+        adhanPlayer = new Audio('/app-Salet/adhan1.mp3');
+        adhanPlayer.volume = 0.8;
+        console.log('✅ Audio adhan OK');
+    } catch (e) {
+        console.error('❌ Erreur audio:', e);
+    }
+}
+
+// ========== JOUER L'ADHAN ==========
+function playAdhan() {
+    console.log('🎵 Lecture adhan...');
+    if (adhanPlayer) {
+        adhanPlayer.currentTime = 0;
+        adhanPlayer.play()
+            .then(() => console.log('✅ Adhan en cours'))
+            .catch(e => console.error('❌ Erreur play:', e));
+    }
+}
+
+// ========== ARRÊTER L'ADHAN ==========
+function stopAdhan() {
+    if (adhanPlayer && !adhanPlayer.paused) {
+        adhanPlayer.pause();
+        adhanPlayer.currentTime = 0;
+        console.log('⏹️ Adhan arrêté');
+    }
+}
+
+// ========== DEMANDER PERMISSIONS ==========
+async function requestNotifPermission() {
+    console.log('📱 Demande permissions...');
+    
+    if (!('Notification' in window)) {
+        alert('❌ Navigateur ne supporte pas les notifications');
+        return false;
+    }
+    
+    if (Notification.permission === 'granted') {
+        notifPermission = 'granted';
+        console.log('✅ Permission déjà accordée');
+        return true;
+    }
+    
+    try {
+        const perm = await Notification.requestPermission();
+        notifPermission = perm;
+        
+        if (perm === 'granted') {
+            alert('✅ Notifications activées !');
+            loadSettings();
+            planifierToutesNotifications();
+            return true;
+        } else {
+            alert('❌ Veuillez autoriser les notifications');
+            return false;
+        }
+    } catch (e) {
+        console.error('❌ Erreur permission:', e);
+        return false;
+    }
+}
+
+// ========== ENVOYER NOTIFICATION ==========
+function envoyerNotification(priere, heure) {
+    console.log(`📢 Notification: ${priere} à ${heure}`);
+    
+    const noms = {
+        fajr: { fr: 'Fajr (Aube)', icon: '🌅' },
+        dhuhr: { fr: 'Dhuhr (Midi)', icon: '☀️' },
+        asr: { fr: 'Asr (Après-midi)', icon: '🌤️' },
+        maghrib: { fr: 'Maghrib (Coucher)', icon: '🌆' },
+        isha: { fr: 'Isha (Nuit)', icon: '🌙' }
+    };
+    
+    const p = noms[priere];
+    const titre = `🕌 ${p.icon} ${p.fr}`;
+    const message = `C'est l'heure de la prière - ${heure}`;
+    
+    try {
+        const notif = new Notification(titre, {
+            body: message,
+            icon: '/app-Salet/icon-512.png',
+            badge: '/app-Salet/icon-192.png',
+            tag: `prayer-${priere}`,
+            requireInteraction: true,
+            vibrate: [200, 100, 200]
+        });
+        
+        // Jouer adhan
+        playAdhan();
+        
+        // Fermer après 30s
+        setTimeout(() => notif.close(), 30000);
+        
+        // Si on clique, arrêter adhan
+        notif.onclick = () => {
+            stopAdhan();
+            window.focus();
+            notif.close();
+        };
+        
+        console.log('✅ Notification envoyée');
+    } catch (e) {
+        console.error('❌ Erreur notification:', e);
+    }
+}
+
+// ========== LIRE LES HORAIRES DEPUIS LA PAGE ==========
+function lireHoraires() {
+    console.log('📖 Lecture horaires...');
+    
+    const horaires = {};
+    
+    // Chercher les éléments de prière dans le DOM
+    // Structure: .prayer-row ou similaire avec .prayer-time
+    
+    // Méthode 1: Par sélecteur direct
+    try {
+        // Essayer de trouver les horaires dans prayer-times-city1
+        const container = document.getElementById('prayer-times-city1');
+        if (container) {
+            console.log('📍 Container trouvé');
+            
+            // Chercher toutes les cartes de prière
+            const prayerElements = container.querySelectorAll('[class*="prayer"]');
+            console.log(`📊 ${prayerElements.length} éléments trouvés`);
+            
+            // Essayer de mapper aux prières
+            const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+            let index = 0;
+            
+            prayerElements.forEach(elem => {
+                // Chercher l'heure dans cet élément
+                const timeMatch = elem.textContent.match(/(\d{1,2}:\d{2})/);
+                if (timeMatch && index < prayers.length) {
+                    const time = timeMatch[1];
+                    // Vérifier que ce n'est pas l'heure locale
+                    if (!elem.textContent.includes('locale')) {
+                        horaires[prayers[index]] = time;
+                        console.log(`  ✓ ${prayers[index]}: ${time}`);
+                        index++;
+                    }
+                }
+            });
+        }
+        
+        // Méthode 2: Chercher directement les heures dans le texte
+        if (Object.keys(horaires).length === 0) {
+            console.log('📍 Méthode alternative...');
+            const allText = document.body.textContent;
+            const times = allText.match(/\d{1,2}:\d{2}/g);
+            
+            if (times && times.length >= 5) {
+                console.log(`📊 ${times.length} heures trouvées`);
+                
+                // Filtrer pour ne garder que les heures de prière (pas l'heure locale)
+                const prayerTimes = times.filter(t => {
+                    const [h, m] = t.split(':').map(Number);
+                    // Les heures de prière sont généralement entre 3h et 23h
+                    return h >= 3 && h <= 23;
+                });
+                
+                if (prayerTimes.length >= 5) {
+                    const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+                    prayerTimes.slice(0, 5).forEach((time, i) => {
+                        horaires[prayers[i]] = time;
+                        console.log(`  ✓ ${prayers[i]}: ${time}`);
+                    });
+                }
+            }
+        }
+        
+    } catch (e) {
+        console.error('❌ Erreur lecture:', e);
+    }
+    
+    if (Object.keys(horaires).length > 0) {
+        console.log('✅ Horaires extraits:', horaires);
+        return horaires;
+    } else {
+        console.error('❌ Aucun horaire trouvé');
+        return null;
+    }
+}
+
+// ========== PLANIFIER UNE NOTIFICATION ==========
+function planifierNotif(priere, heure) {
+    if (!prayerConfig[priere]) {
+        console.log(`⏭️ ${priere} désactivée`);
+        return;
+    }
+    
+    console.log(`⏰ Planification ${priere} à ${heure}`);
+    
+    try {
+        const [h, m] = heure.split(':').map(Number);
+        const now = new Date();
+        const target = new Date();
+        target.setHours(h, m, 0, 0);
+        
+        // Si passé, planifier pour demain
+        if (target <= now) {
+            target.setDate(target.getDate() + 1);
+            console.log(`📅 ${priere} → demain`);
+        }
+        
+        const delay = target.getTime() - now.getTime();
+        const minutes = Math.round(delay / 1000 / 60);
+        
+        console.log(`⏳ ${priere} dans ${minutes} min (${Math.floor(minutes/60)}h${minutes%60}m)`);
+        
+        const timer = setTimeout(() => {
+            console.log(`🔔 DÉCLENCHEMENT ${priere}`);
+            envoyerNotification(priere, heure);
+            
+            // Replanifier pour demain
+            setTimeout(() => planifierNotif(priere, heure), 2000);
+        }, delay);
+        
+        notifTimers.push(timer);
+        console.log(`✅ ${priere} planifiée`);
+        
+    } catch (e) {
+        console.error(`❌ Erreur planification ${priere}:`, e);
+    }
+}
+
+// ========== ANNULER TOUS LES TIMERS ==========
+function annulerTimers() {
+    console.log(`🚫 Annulation ${notifTimers.length} timers`);
+    notifTimers.forEach(t => clearTimeout(t));
+    notifTimers = [];
+}
+
+// ========== PLANIFIER TOUTES LES NOTIFICATIONS ==========
+function planifierToutesNotifications() {
+    console.log('🔄 Planification toutes notifications...');
+    
+    if (notifPermission !== 'granted') {
+        console.log('❌ Permission non accordée');
+        return;
+    }
+    
+    annulerTimers();
+    
+    const horaires = lireHoraires();
+    if (!horaires) {
+        console.error('❌ Impossible de lire les horaires');
+        setTimeout(planifierToutesNotifications, 5000);
+        return;
+    }
+    
+    // Planifier chaque prière activée
+    Object.keys(horaires).forEach(priere => {
+        if (prayerConfig[priere]) {
+            planifierNotif(priere, horaires[priere]);
+        }
+    });
+    
+    console.log('✅ Toutes les notifications planifiées');
+}
+
+// ========== SAUVEGARDER PARAMÈTRES ==========
+function sauvegarderSettings() {
+    try {
+        localStorage.setItem('prayerNotifications', JSON.stringify(prayerConfig));
+        console.log('💾 Sauvegardé:', prayerConfig);
+    } catch (e) {
+        console.error('❌ Erreur sauvegarde:', e);
+    }
+}
+
+// ========== CHARGER PARAMÈTRES ==========
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('prayerNotifications');
+        if (saved) {
+            prayerConfig = JSON.parse(saved);
+            console.log('📂 Chargé:', prayerConfig);
+            majUI();
+        }
+    } catch (e) {
+        console.error('❌ Erreur chargement:', e);
+    }
+}
+
+// ========== METTRE À JOUR UI ==========
+function majUI() {
+    console.log('🎨 MAJ UI...');
+    Object.keys(prayerConfig).forEach(priere => {
+        const cb = document.getElementById(`notif-${priere}`);
+        if (cb) {
+            cb.checked = prayerConfig[priere];
+        }
+    });
+}
+
+// ========== TOGGLE PRIÈRE ==========
+function togglePriere(priere, actif) {
+    console.log(`🔄 ${priere}: ${actif ? 'ON' : 'OFF'}`);
+    prayerConfig[priere] = actif;
+    sauvegarderSettings();
+    
+    if (notifPermission === 'granted') {
+        planifierToutesNotifications();
+    }
+}
+
+// ========== TEST ADHAN ==========
+function testerAdhan() {
+    console.log('🧪 Test adhan...');
+    playAdhan();
+    
+    if (notifPermission === 'granted') {
+        try {
+            const notif = new Notification('🕌 Test Adhan', {
+                body: 'L\'adhan devrait jouer maintenant',
+                icon: '/app-Salet/icon-512.png'
+            });
+            notif.onclick = () => {
+                stopAdhan();
+                notif.close();
+            };
+            setTimeout(() => notif.close(), 10000);
+        } catch (e) {
+            console.error('❌ Erreur notif test:', e);
+        }
+    } else {
+        alert('⚠️ Autorisez d\'abord les notifications');
+    }
+}
+
+// ========== INITIALISATION ==========
+function initNotificationSystem() {
+    console.log('🚀 Init système notifications...');
+    
+    // 1. Init audio
+    initAdhan();
+    
+    // 2. Charger settings
+    loadSettings();
+    
+    // 3. Check permission
+    if ('Notification' in window) {
+        notifPermission = Notification.permission;
+        console.log('🔔 Permission:', notifPermission);
+    }
+    
+    // 4. Bouton activation
+    const btnActivate = document.getElementById('activate-notifications-btn');
+    if (btnActivate) {
+        btnActivate.addEventListener('click', async () => {
+            console.log('📱 Clic activation');
+            const ok = await requestNotifPermission();
+            if (ok) {
+                alert('✅ Notifications activées ! Configurez les prières.');
+            }
+        });
+        console.log('✅ Bouton activation OK');
+    }
+    
+    // 5. Bouton test
+    const btnTest = document.getElementById('test-adhan-btn');
+    if (btnTest) {
+        btnTest.addEventListener('click', () => {
+            console.log('🎵 Clic test');
+            testerAdhan();
+        });
+        console.log('✅ Bouton test OK');
+    }
+    
+    // 6. Switches
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(priere => {
+        const cb = document.getElementById(`notif-${priere}`);
+        if (cb) {
+            cb.addEventListener('change', e => togglePriere(priere, e.target.checked));
+            console.log(`✅ Switch ${priere} OK`);
+        }
+    });
+    
+    // 7. Modal
+    const btnOpen = document.getElementById('open-notifications-modal');
+    const btnClose = document.getElementById('close-notifications');
+    const modal = document.getElementById('notifications-modal');
+    
+    if (btnOpen && modal) {
+        btnOpen.addEventListener('click', () => {
+            modal.classList.add('active');
+            modal.style.display = 'block';
+            majUI();
+        });
+        console.log('✅ Ouverture modal OK');
+    }
+    
+    if (btnClose && modal) {
+        btnClose.addEventListener('click', () => {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        });
+        console.log('✅ Fermeture modal OK');
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    // 8. MAJ UI
+    majUI();
+    
+    // 9. Si permission accordée, planifier
+    if (notifPermission === 'granted') {
+        console.log('🔔 Permission OK, planification dans 3s...');
+        setTimeout(planifierToutesNotifications, 3000);
+    }
+    
+    console.log('✅ Système notifications initialisé !');
+}
+
+// ========== AUTO-DÉMARRAGE ==========
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initNotificationSystem, 1000);
+    });
+} else {
+    setTimeout(initNotificationSystem, 1000);
+}
+
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (notifPermission === 'granted') {
+            planifierToutesNotifications();
+        }
+    }, 2000);
+});
+
+console.log('✅ Code notifications chargé !');
