@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PWA - Diagnostic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-card h2 {
+            margin-top: 0;
+            color: #1e3c72;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #166534;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        button {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2a5298;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .result {
+            background: #f9fafb;
+            padding: 15px;
+            border-left: 4px solid #1e3c72;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test et Diagnostic PWA</h1>
+    <p>Cette page teste si votre application peut être installée.</p>
+    
+    <div class="test-card">
+        <h2>1. Test HTTPS</h2>
+        <div id="https-status"></div>
+        <p>Les PWA nécessitent HTTPS (sauf pour localhost).</p>
+    </div>
+    
+    <div class="test-card">
+        <h2>2. Test Service Worker</h2>
+        <div id="sw-status"></div>
+        <button onclick="testServiceWorker()">🔄 Tester Service Worker</button>
+        <div id="sw-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>3. Test Manifest</h2>
+        <div id="manifest-status"></div>
+        <button onclick="testManifest()">🔄 Tester Manifest</button>
+        <div id="manifest-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>4. Test Icônes</h2>
+        <div id="icons-status"></div>
+        <button onclick="testIcons()">🔄 Tester Icônes</button>
+        <div id="icons-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>5. Test Installation</h2>
+        <div id="install-status"></div>
+        <button onclick="testInstallability()">🔄 Tester Installabilité</button>
+        <div id="install-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>📝 Résumé</h2>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        let issues = [];
+        let successes = [];
+        
+        // Test HTTPS
+        function testHTTPS() {
+            const isHTTPS = window.location.protocol === 'https:';
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            const statusDiv = document.getElementById('https-status');
+            if (isHTTPS || isLocalhost) {
+                statusDiv.innerHTML = '<div class="status success">✅ HTTPS activé ou localhost</div>';
+                successes.push('HTTPS OK');
+            } else {
+                statusDiv.innerHTML = '<div class="status error">❌ HTTPS requis ! Actuellement: ' + window.location.protocol + '</div>';
+                issues.push('HTTPS manquant');
+            }
+        }
+        
+        // Test Service Worker
+        async function testServiceWorker() {
+            const statusDiv = document.getElementById('sw-status');
+            const resultDiv = document.getElementById('sw-result');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    resultDiv.style.display = 'block';
+                    resultDiv.textContent = 'Service Workers enregistrés: ' + registrations.length + '\n\n' + 
+                                           JSON.stringify(registrations.map(r => ({
+                                               scope: r.scope,
+                                               active: r.active ? 'Oui' : 'Non'
+                                           })), null, 2);
+                    
+                    if (registrations.length > 0) {
+                        statusDiv.innerHTML = '<div class="status success">✅ Service Worker enregistré</div>';
+                        successes.push('Service Worker OK');
+                    } else {
+                        statusDiv.innerHTML = '<div class="status warning">⚠️ Aucun Service Worker enregistré</div>';
+                        issues.push('Service Worker non enregistré');
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = '<div class="status error">❌ Erreur: ' + error.message + '</div>';
+                    resultDiv.style.display = 'block';
+                    resultDiv.textContent = 'Erreur: ' + error;
+                    issues.push('Service Worker erreur');
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="status error">❌ Service Worker non supporté par ce navigateur</div>';
+                issues.push('Service Worker non supporté');
+            }
+            updateSummary();
+        }
+        
+        // Test Manifest
+        async function testManifest() {
+            const statusDiv = document.getElementById('manifest-status');
+            const resultDiv = document.getElementById('manifest-result');
+            
+            try {
+                const response = await fetch('./manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    resultDiv.style.display = 'block';
+                    resultDiv.textContent = JSON.stringify(manifest, null, 2);
+                    
+                    let manifestIssues = [];
+                    if (!manifest.name) manifestIssues.push('name manquant');
+                    if (!manifest.icons || manifest.icons.length === 0) manifestIssues.push('icons manquants');
+                    if (!manifest.start_url) manifestIssues.push('start_url manquant');
+                    if (!manifest.display) manifestIssues.push('display manquant');
+                    
+                    if (manifestIssues.length === 0) {
+                        statusDiv.innerHTML = '<div class="status success">✅ Manifest valide</div>';
+                        successes.push('Manifest OK');
+                    } else {
+                        statusDiv.innerHTML = '<div class="status warning">⚠️ Manifest incomplet: ' + manifestIssues.join(', ') + '</div>';
+                        issues.push('Manifest incomplet');
+                    }
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">❌ manifest.json introuvable (404)</div>';
+                    issues.push('Manifest introuvable');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">❌ Erreur lecture manifest: ' + error.message + '</div>';
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = 'Erreur: ' + error;
+                issues.push('Manifest erreur');
+            }
+            updateSummary();
+        }
+        
+        // Test Icônes
+        async function testIcons() {
+            const statusDiv = document.getElementById('icons-status');
+            const resultDiv = document.getElementById('icons-result');
+            
+            const iconsToTest = [
+                './icon-192.png',
+                './icon-512.png'
+            ];
+            
+            let results = [];
+            for (let iconUrl of iconsToTest) {
+                try {
+                    const response = await fetch(iconUrl);
+                    const exists = response.ok;
+                    const contentType = response.headers.get('content-type');
+                    results.push({
+                        url: iconUrl,
+                        exists: exists,
+                        type: contentType,
+                        status: response.status
+                    });
+                } catch (error) {
+                    results.push({
+                        url: iconUrl,
+                        exists: false,
+                        error: error.message
+                    });
+                }
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = JSON.stringify(results, null, 2);
+            
+            const allExist = results.every(r => r.exists);
+            const allPNG = results.every(r => r.type && r.type.includes('image'));
+            
+            if (allExist && allPNG) {
+                statusDiv.innerHTML = '<div class="status success">✅ Toutes les icônes sont OK</div>';
+                successes.push('Icônes OK');
+            } else if (allExist) {
+                statusDiv.innerHTML = '<div class="status warning">⚠️ Icônes trouvées mais peut-être pas des images PNG valides</div>';
+                issues.push('Icônes type incorrect');
+            } else {
+                statusDiv.innerHTML = '<div class="status error">❌ Icônes manquantes: ' + 
+                                     results.filter(r => !r.exists).map(r => r.url).join(', ') + '</div>';
+                issues.push('Icônes manquantes');
+            }
+            updateSummary();
+        }
+        
+        // Test Installabilité
+        function testInstallability() {
+            const statusDiv = document.getElementById('install-status');
+            const resultDiv = document.getElementById('install-result');
+            
+            resultDiv.style.display = 'block';
+            
+            let info = {
+                beforeinstallprompt: 'Non déclenché',
+                standalone: window.matchMedia('(display-mode: standalone)').matches,
+                serviceWorker: 'serviceWorker' in navigator
+            };
+            
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                statusDiv.innerHTML = '<div class="status success">✅ Application déjà installée et lancée en mode standalone</div>';
+                successes.push('App installée');
+            } else {
+                statusDiv.innerHTML = '<div class="status warning">⚠️ Application non installée. Vérifiez les autres tests.</div>';
+                issues.push('App non installable');
+            }
+            
+            resultDiv.textContent = JSON.stringify(info, null, 2);
+            updateSummary();
+        }
+        
+        // Mettre à jour le résumé
+        function updateSummary() {
+            const summaryDiv = document.getElementById('summary');
+            
+            let html = '<h3>✅ Succès (' + successes.length + '):</h3><ul>';
+            successes.forEach(s => html += '<li>' + s + '</li>');
+            html += '</ul>';
+            
+            if (issues.length > 0) {
+                html += '<h3>❌ Problèmes (' + issues.length + '):</h3><ul>';
+                issues.forEach(i => html += '<li>' + i + '</li>');
+                html += '</ul>';
+                
+                html += '<h3>🔧 Actions à faire:</h3><ol>';
+                if (issues.includes('Icônes manquantes')) {
+                    html += '<li>Créez les icônes avec generer-icones.html</li>';
+                    html += '<li>Uploadez icon-192.png et icon-512.png sur GitHub</li>';
+                }
+                if (issues.includes('Service Worker non enregistré')) {
+                    html += '<li>Vérifiez que service-worker.js est uploadé</li>';
+                    html += '<li>Vérifiez le code d\'enregistrement dans index.html</li>';
+                }
+                if (issues.includes('Manifest introuvable')) {
+                    html += '<li>Uploadez manifest.json sur GitHub</li>';
+                }
+                if (issues.includes('HTTPS manquant')) {
+                    html += '<li>Activez GitHub Pages (automatiquement HTTPS)</li>';
+                }
+                html += '</ol>';
+            } else {
+                html += '<h3 style="color: #22c55e;">🎉 Tout est OK ! Votre app devrait être installable !</h3>';
+            }
+            
+            summaryDiv.innerHTML = html;
+        }
+        
+        // Lancer les tests au chargement
+        window.onload = function() {
+            testHTTPS();
+            testServiceWorker();
+            testManifest();
+            testIcons();
+            testInstallability();
+        };
+    </script>
+</body>
+</html>
