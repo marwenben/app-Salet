@@ -1,29 +1,28 @@
 {
   "name": "Horaires de Prière",
-  "short_name": "Salat Times",
-  "description": "Horaires de prière avec notifications et adhan pour Montréal et autres villes",
-  "start_url": "/",
+  "short_name": "Prière",
+  "description": "Application des horaires de prière islamiques avec Coran, Qibla et notifications",
+  "start_url": "/app-Salet/",
+  "scope": "/app-Salet/",
   "display": "standalone",
   "background_color": "#1e3c72",
   "theme_color": "#1e3c72",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/app-Salet/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/app-Salet/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "categories": ["lifestyle", "utilities"],
-  "lang": "fr",
-  "dir": "ltr",
-  "scope": "/",
-  "prefer_related_applications": false
+  "lang": "fr-FR",
+  "dir": "auto"
 }
