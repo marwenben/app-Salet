@@ -1,0 +1,18 @@
+INSTRUCTIONS POUR CRÉER LES ICÔNES:
+
+Option 1 - FACILE (Utiliser un générateur en ligne):
+1. Allez sur https://favicon.io/favicon-converter/
+2. Uploadez une image de mosquée ou créez un texte "🕌"
+3. Téléchargez les icônes générées
+4. Renommez-les en "icon-192.png" et "icon-512.png"
+
+Option 2 - Utiliser une image existante:
+1. Trouvez une belle image de mosquée (512x512 pixels minimum)
+2. Utilisez un outil comme https://www.iloveimg.com/resize-image
+3. Créez deux versions: 192x192 et 512x512
+4. Sauvegardez-les comme "icon-192.png" et "icon-512.png"
+
+Option 3 - TEMPORAIRE (pour tester):
+1. Utilisez n'importe quelle image carrée
+2. Renommez-la en "icon-192.png" et "icon-512.png"
+3. L'app fonctionnera même sans icônes parfaites
