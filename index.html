@@ -786,4 +786,300 @@
         }
     </script>
 </body>
+    <!-- ========== MODAL NOTIFICATIONS ========== -->
+<!-- À AJOUTER DANS index.html, AVANT LA FERMETURE DE </body> -->
+
+<!-- Bouton pour ouvrir les notifications (à ajouter dans la barre de navigation) -->
+<button id="open-notifications-modal" class="icon-btn" title="Notifications">
+    <span class="material-icons">🔔</span> Notifications
+</button>
+
+<!-- Modal des notifications -->
+<div id="notifications-modal" class="modal">
+    <div class="modal-content notifications-modal-content">
+        <button id="close-notifications" class="close-btn">✕</button>
+        
+        <h2 class="modal-title">
+            <span class="notif-icon">🔔</span>
+            <span class="fr">Notifications de Prière</span>
+            <span class="ar" style="display:none;">إشعارات الصلاة</span>
+        </h2>
+        
+        <div class="notification-section">
+            <!-- Activation des notifications -->
+            <div class="notif-activate-section">
+                <p class="fr">Activez les notifications pour recevoir des alertes avec l'adhan à l'heure de chaque prière.</p>
+                <p class="ar" style="display:none;">قم بتفعيل الإشعارات لتلقي التنبيهات مع الأذان في وقت كل صلاة.</p>
+                
+                <button id="activate-notifications-btn" class="activate-btn">
+                    <span class="fr">🔔 Activer les Notifications</span>
+                    <span class="ar" style="display:none;">🔔 تفعيل الإشعارات</span>
+                </button>
+                
+                <button id="test-adhan-btn" class="test-btn">
+                    <span class="fr">🎵 Tester l'Adhan</span>
+                    <span class="ar" style="display:none;">🎵 اختبار الأذان</span>
+                </button>
+            </div>
+            
+            <!-- Liste des prières -->
+            <div class="prayers-list">
+                <h3 class="fr">Sélectionnez les prières :</h3>
+                <h3 class="ar" style="display:none;">اختر الصلوات:</h3>
+                
+                <!-- Fajr -->
+                <div class="prayer-toggle">
+                    <label class="switch-label">
+                        <span class="prayer-name">
+                            <span class="prayer-icon">🌅</span>
+                            <span class="fr">Fajr (Aube)</span>
+                            <span class="ar" style="display:none;">الفجر</span>
+                        </span>
+                        <input type="checkbox" id="notif-fajr" class="toggle-switch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- Dhuhr -->
+                <div class="prayer-toggle">
+                    <label class="switch-label">
+                        <span class="prayer-name">
+                            <span class="prayer-icon">☀️</span>
+                            <span class="fr">Dhuhr (Midi)</span>
+                            <span class="ar" style="display:none;">الظهر</span>
+                        </span>
+                        <input type="checkbox" id="notif-dhuhr" class="toggle-switch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- Asr -->
+                <div class="prayer-toggle">
+                    <label class="switch-label">
+                        <span class="prayer-name">
+                            <span class="prayer-icon">🌤️</span>
+                            <span class="fr">Asr (Après-midi)</span>
+                            <span class="ar" style="display:none;">العصر</span>
+                        </span>
+                        <input type="checkbox" id="notif-asr" class="toggle-switch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- Maghrib -->
+                <div class="prayer-toggle">
+                    <label class="switch-label">
+                        <span class="prayer-name">
+                            <span class="prayer-icon">🌆</span>
+                            <span class="fr">Maghrib (Coucher du soleil)</span>
+                            <span class="ar" style="display:none;">المغرب</span>
+                        </span>
+                        <input type="checkbox" id="notif-maghrib" class="toggle-switch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- Isha -->
+                <div class="prayer-toggle">
+                    <label class="switch-label">
+                        <span class="prayer-name">
+                            <span class="prayer-icon">🌙</span>
+                            <span class="fr">Isha (Nuit)</span>
+                            <span class="ar" style="display:none;">العشاء</span>
+                        </span>
+                        <input type="checkbox" id="notif-isha" class="toggle-switch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Informations -->
+            <div class="notif-info">
+                <p class="fr">💡 <strong>Note :</strong> Votre appareil doit rester allumé et l'application ouverte en arrière-plan pour recevoir les notifications.</p>
+                <p class="ar" style="display:none;">💡 <strong>ملاحظة:</strong> يجب أن يظل جهازك مشغلاً والتطبيق مفتوحاً في الخلفية لتلقي الإشعارات.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Styles CSS pour les notifications -->
+<style>
+.notifications-modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.notif-icon {
+    font-size: 32px;
+}
+
+.notification-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.notif-activate-section {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    color: white;
+}
+
+.notif-activate-section p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.activate-btn, .test-btn {
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 5px;
+}
+
+.activate-btn {
+    background: white;
+    color: #667eea;
+}
+
+.activate-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.test-btn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid white;
+}
+
+.test-btn:hover {
+    background: white;
+    color: #667eea;
+}
+
+.prayers-list {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.prayers-list h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.prayer-toggle {
+    padding: 15px;
+    margin: 10px 0;
+    background: #f8f9fa;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.prayer-toggle:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.switch-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+}
+
+.prayer-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.prayer-icon {
+    font-size: 24px;
+}
+
+.toggle-switch {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.slider {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: #ccc;
+    border-radius: 26px;
+    transition: 0.4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.4s;
+}
+
+.toggle-switch:checked + .slider {
+    background-color: #4CAF50;
+}
+
+.toggle-switch:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.notif-info {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.notif-info strong {
+    color: #856404;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .notifications-modal-content {
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .modal-title {
+        font-size: 20px;
+    }
+    
+    .prayer-name {
+        font-size: 14px;
+    }
+}
+</style>
+
 </html>
