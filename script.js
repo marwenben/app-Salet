@@ -1978,3 +1978,380 @@ setInterval(() => {
     });
     saveNotificationSettings();
 }, 3600000); // Toutes les heures
+// ========== SYSTÈME DE NOTIFICATIONS COMPLET ==========
+// À AJOUTER À LA FIN DE script.js
+
+// Variables globales pour les notifications
+let notificationPermission = 'default';
+let notificationTimers = [];
+let prayerNotifications = {
+    fajr: { enabled: false, minutes: 0 },
+    dhuhr: { enabled: false, minutes: 0 },
+    asr: { enabled: false, minutes: 0 },
+    maghrib: { enabled: false, minutes: 0 },
+    isha: { enabled: false, minutes: 0 }
+};
+
+// Objet Audio pour l'adhan
+let adhanAudio = null;
+
+// Initialiser l'audio de l'adhan
+function initAdhanAudio() {
+    console.log('🔊 Initialisation audio adhan...');
+    try {
+        adhanAudio = new Audio('./adhan1.mp3');
+        adhanAudio.volume = 0.7;
+        console.log('✅ Audio adhan prêt');
+    } catch (error) {
+        console.error('❌ Erreur init audio:', error);
+    }
+}
+
+// Jouer l'adhan
+function playAdhan() {
+    console.log('🔊 Lecture adhan...');
+    if (adhanAudio) {
+        adhanAudio.currentTime = 0;
+        adhanAudio.play()
+            .then(() => console.log('✅ Adhan joué'))
+            .catch(err => console.error('❌ Erreur lecture adhan:', err));
+    }
+}
+
+// Tester l'adhan
+function testAdhan() {
+    console.log('🎵 Test adhan...');
+    playAdhan();
+    
+    // Afficher une notification de test
+    if (notificationPermission === 'granted') {
+        new Notification('🕌 Test Adhan', {
+            body: 'Ceci est un test de notification',
+            icon: './icon-192.png',
+            badge: './icon-192.png',
+            tag: 'test-adhan',
+            requireInteraction: false
+        });
+    }
+}
+
+// Demander la permission de notifications
+async function requestNotificationPermission() {
+    console.log('🔔 Demande permission notifications...');
+    
+    if (!('Notification' in window)) {
+        console.error('❌ Notifications non supportées');
+        alert('Votre navigateur ne supporte pas les notifications');
+        return false;
+    }
+    
+    try {
+        const permission = await Notification.requestPermission();
+        notificationPermission = permission;
+        console.log('🔔 Permission:', permission);
+        
+        if (permission === 'granted') {
+            console.log('✅ Permission accordée!');
+            updateNotificationUI();
+            return true;
+        } else {
+            console.log('❌ Permission refusée');
+            alert('Veuillez autoriser les notifications pour recevoir les alertes de prière');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Erreur permission:', error);
+        return false;
+    }
+}
+
+// Envoyer une notification de prière
+function sendPrayerNotification(prayerName, prayerTime) {
+    console.log(`📢 Notification: ${prayerName} à ${prayerTime}`);
+    
+    const prayerNames = {
+        fr: {
+            fajr: 'Fajr (Aube)',
+            dhuhr: 'Dhuhr (Midi)',
+            asr: 'Asr (Après-midi)',
+            maghrib: 'Maghrib (Coucher du soleil)',
+            isha: 'Isha (Nuit)'
+        },
+        ar: {
+            fajr: 'الفجر',
+            dhuhr: 'الظهر',
+            asr: 'العصر',
+            maghrib: 'المغرب',
+            isha: 'العشاء'
+        }
+    };
+    
+    const title = `🕌 ${prayerNames[currentLang][prayerName]}`;
+    const body = currentLang === 'ar' 
+        ? `حان وقت الصلاة - ${prayerTime}` 
+        : `C'est l'heure de la prière - ${prayerTime}`;
+    
+    // Créer la notification
+    const notification = new Notification(title, {
+        body: body,
+        icon: './icon-512.png',
+        badge: './icon-192.png',
+        tag: `prayer-${prayerName}`,
+        requireInteraction: true,
+        vibrate: [200, 100, 200, 100, 200],
+        data: { prayerName, prayerTime }
+    });
+    
+    // Jouer l'adhan
+    playAdhan();
+    
+    // Fermer automatiquement après 30 secondes
+    setTimeout(() => {
+        notification.close();
+    }, 30000);
+    
+    // Actions sur la notification
+    notification.onclick = function() {
+        console.log('📱 Notification cliquée');
+        window.focus();
+        this.close();
+        
+        // Arrêter l'adhan si en cours
+        if (adhanAudio && !adhanAudio.paused) {
+            adhanAudio.pause();
+            adhanAudio.currentTime = 0;
+        }
+    };
+}
+
+// Planifier les notifications pour une prière
+function schedulePrayerNotification(prayerName, prayerTime) {
+    if (!prayerNotifications[prayerName].enabled) {
+        console.log(`⏭️ ${prayerName} notification désactivée`);
+        return;
+    }
+    
+    console.log(`⏰ Planification ${prayerName} à ${prayerTime}`);
+    
+    try {
+        const [hours, minutes] = prayerTime.split(':').map(Number);
+        const now = new Date();
+        const prayerDate = new Date(now);
+        prayerDate.setHours(hours, minutes, 0, 0);
+        
+        // Si l'heure est déjà passée aujourd'hui, planifier pour demain
+        if (prayerDate <= now) {
+            prayerDate.setDate(prayerDate.getDate() + 1);
+            console.log(`📅 ${prayerName} planifiée pour demain`);
+        }
+        
+        const delay = prayerDate.getTime() - now.getTime();
+        console.log(`⏳ ${prayerName} dans ${Math.round(delay / 1000 / 60)} minutes`);
+        
+        // Planifier la notification
+        const timer = setTimeout(() => {
+            sendPrayerNotification(prayerName, prayerTime);
+            
+            // Replanifier pour le lendemain
+            setTimeout(() => {
+                schedulePrayerNotification(prayerName, prayerTime);
+            }, 1000);
+        }, delay);
+        
+        notificationTimers.push(timer);
+        
+    } catch (error) {
+        console.error(`❌ Erreur planification ${prayerName}:`, error);
+    }
+}
+
+// Annuler toutes les notifications planifiées
+function cancelAllNotifications() {
+    console.log('🚫 Annulation de toutes les notifications...');
+    notificationTimers.forEach(timer => clearTimeout(timer));
+    notificationTimers = [];
+    console.log('✅ Notifications annulées');
+}
+
+// Activer/désactiver une prière
+function togglePrayerNotification(prayerName, enabled) {
+    console.log(`🔔 ${prayerName}: ${enabled ? 'ON' : 'OFF'}`);
+    prayerNotifications[prayerName].enabled = enabled;
+    
+    // Sauvegarder dans localStorage
+    localStorage.setItem('prayerNotifications', JSON.stringify(prayerNotifications));
+    
+    // Replanifier toutes les notifications
+    updateAllNotifications();
+}
+
+// Mettre à jour toutes les notifications
+function updateAllNotifications() {
+    console.log('🔄 Mise à jour notifications...');
+    
+    if (notificationPermission !== 'granted') {
+        console.log('❌ Permissions non accordées');
+        return;
+    }
+    
+    // Annuler les anciennes
+    cancelAllNotifications();
+    
+    // Récupérer les horaires actuels
+    const prayerTimesElement1 = document.getElementById('prayer-times-city1');
+    if (!prayerTimesElement1) {
+        console.log('❌ Horaires non disponibles');
+        return;
+    }
+    
+    // Extraire les horaires
+    const prayerRows = prayerTimesElement1.querySelectorAll('.prayer-row');
+    const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    
+    prayerRows.forEach((row, index) => {
+        const prayerName = prayers[index];
+        const timeElement = row.querySelector('.prayer-time');
+        
+        if (timeElement && prayerNotifications[prayerName].enabled) {
+            const prayerTime = timeElement.textContent.trim();
+            schedulePrayerNotification(prayerName, prayerTime);
+        }
+    });
+    
+    console.log('✅ Notifications mises à jour');
+}
+
+// Charger les préférences depuis localStorage
+function loadNotificationPreferences() {
+    console.log('📂 Chargement préférences...');
+    
+    const saved = localStorage.getItem('prayerNotifications');
+    if (saved) {
+        try {
+            prayerNotifications = JSON.parse(saved);
+            console.log('✅ Préférences chargées:', prayerNotifications);
+        } catch (error) {
+            console.error('❌ Erreur chargement préférences:', error);
+        }
+    }
+    
+    // Charger la permission
+    if ('Notification' in window) {
+        notificationPermission = Notification.permission;
+        console.log('🔔 Permission actuelle:', notificationPermission);
+    }
+}
+
+// Mettre à jour l'interface des notifications
+function updateNotificationUI() {
+    console.log('🎨 Mise à jour UI notifications...');
+    
+    // Activer/désactiver les switches selon les préférences
+    const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    prayers.forEach(prayer => {
+        const checkbox = document.getElementById(`notif-${prayer}`);
+        if (checkbox) {
+            checkbox.checked = prayerNotifications[prayer].enabled;
+        }
+    });
+}
+
+// Initialiser le système de notifications
+function initNotificationSystem() {
+    console.log('🔔 Initialisation système notifications...');
+    
+    // Initialiser l'audio
+    initAdhanAudio();
+    
+    // Charger les préférences
+    loadNotificationPreferences();
+    
+    // Bouton activer notifications
+    const activateBtn = document.getElementById('activate-notifications-btn');
+    if (activateBtn) {
+        activateBtn.addEventListener('click', async () => {
+            console.log('📱 Clic activer notifications');
+            const granted = await requestNotificationPermission();
+            if (granted) {
+                updateAllNotifications();
+            }
+        });
+    }
+    
+    // Bouton tester adhan
+    const testBtn = document.getElementById('test-adhan-btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            console.log('🎵 Clic test adhan');
+            testAdhan();
+        });
+    }
+    
+    // Switches pour chaque prière
+    const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    prayers.forEach(prayer => {
+        const checkbox = document.getElementById(`notif-${prayer}`);
+        if (checkbox) {
+            checkbox.addEventListener('change', (e) => {
+                togglePrayerNotification(prayer, e.target.checked);
+            });
+        }
+    });
+    
+    // Ouvrir/fermer le modal
+    const openBtn = document.getElementById('open-notifications-modal');
+    const closeBtn = document.getElementById('close-notifications');
+    const modal = document.getElementById('notifications-modal');
+    
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            if (modal) modal.classList.add('active');
+            updateNotificationUI();
+        });
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if (modal) modal.classList.remove('active');
+        });
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+    
+    // Mettre à jour l'UI
+    updateNotificationUI();
+    
+    // Si les permissions sont déjà accordées, planifier les notifications
+    if (notificationPermission === 'granted') {
+        // Attendre que les horaires soient chargés
+        setTimeout(() => {
+            updateAllNotifications();
+        }, 3000);
+    }
+    
+    console.log('✅ Système notifications prêt!');
+}
+
+// Démarrer le système au chargement
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNotificationSystem);
+} else {
+    initNotificationSystem();
+}
+
+// Mettre à jour les notifications quand les horaires changent
+// (À appeler après chaque mise à jour des horaires de prière)
+function onPrayerTimesUpdated() {
+    console.log('🔄 Horaires mis à jour, replanification notifications...');
+    if (notificationPermission === 'granted') {
+        setTimeout(updateAllNotifications, 1000);
+    }
+}
+
+console.log('📢 Système de notifications chargé!');
